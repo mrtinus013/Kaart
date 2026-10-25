@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#de0073">
+<title>Straatzoeker bolletjestekening</title>
+<style>
+:root{--bg:#f7f8f3;--card:#ffffff;--text:#363a3f;--muted:#72777d;--line:#e2e5dc;--accent:#de0073;--accent-green:#bcdb06;--accent-green-soft:#f3f8d8;--accent-pink-soft:#fff1f8;--shadow:0 18px 50px rgba(54,58,63,.08)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+body{min-height:100vh;padding:clamp(22px,6vw,64px) 16px 52px;display:flex;justify-content:center}
+.app{width:min(680px,100%)}
+header{text-align:center;margin-bottom:28px}
+h1{margin:0;font-size:clamp(27px,6vw,42px);line-height:1.08;letter-spacing:-.035em;font-weight:760;color:#363a3f}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:visible}
+.search-wrap{padding:16px;position:relative;z-index:5}
+.search-row{display:flex;gap:10px}
+.input-shell{flex:1;position:relative}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--accent);pointer-events:none}
+input{width:100%;height:56px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--text);padding:0 46px 0 46px;font-size:17px;outline:none;transition:.16s border-color,.16s box-shadow}
+input:focus{border-color:var(--accent-green);box-shadow:0 0 0 4px rgba(188,219,6,.18)}
+.clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:transparent;color:#8a929d;font-size:20px;border-radius:9px;display:none;cursor:pointer}
+.clear:hover{background:var(--accent-pink-soft);color:var(--accent)}
+.go{height:56px;min-width:100px;border:0;border-radius:14px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;padding:0 18px;cursor:pointer;transition:.15s filter,.15s transform}.go:hover{filter:brightness(.93)}.go:active{transform:translateY(1px)}
+.go:disabled{opacity:.55;cursor:wait}
+.suggestions{position:absolute;left:16px;right:126px;top:78px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(20,28,38,.14);overflow:hidden;display:none;max-height:330px;overflow-y:auto;z-index:20}
+.suggestion{padding:13px 15px;cursor:pointer;border-bottom:1px solid #eceff2;font-size:15px}.suggestion:last-child{border-bottom:0}.suggestion:hover,.suggestion.active{background:var(--accent-green-soft)}.s-name{font-weight:600}.s-meta{display:none}.s-empty{padding:15px;color:var(--muted);font-size:13px}
+.content{border-top:1px solid #edf0f2;min-height:210px;padding:26px 20px;display:flex;align-items:center;justify-content:center;text-align:center}
+.empty-state{color:#9aa1aa;font-size:14px;line-height:1.5}.gridicon{display:none}
+.status{display:none;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:14px}.spinner{width:18px;height:18px;border:2px solid #e1e5d4;border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.result{display:none;width:100%}.street{margin:0 0 12px;font-size:16px;font-weight:600;color:var(--muted)}.kaart-result{font-size:clamp(34px,9vw,62px);font-weight:800;letter-spacing:-.045em;line-height:1.08;color:var(--accent);word-break:break-word}.notice{padding:14px 16px;border:1px solid #f0caca;background:#fff6f6;border-radius:12px;color:#9a3434;font-size:14px;line-height:1.45}
+.credit{position:fixed;right:10px;bottom:8px;font-size:9px;color:#92989e;letter-spacing:.01em;user-select:none}
+@media(max-width:560px){body{padding:22px 10px 46px}.search-row{display:block}.go{width:100%;margin-top:9px}.suggestions{left:16px;right:16px;top:78px}.content{min-height:190px;padding:24px 14px}.panel{border-radius:18px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>Straatzoeker bolletjestekening</h1>
+  </header>
+
+  <section class="panel">
+    <div class="search-wrap">
+      <div class="search-row">
+        <div class="input-shell">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.4-3.4"></path></svg>
+          <input id="streetInput" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Typ een straatnaam" aria-label="Straatnaam in Tilburg">
+          <button class="clear" id="clearBtn" aria-label="Wissen">×</button>
+        </div>
+        <button class="go" id="goBtn">Zoeken</button>
+      </div>
+      <div class="suggestions" id="suggestions" role="listbox"></div>
+    </div>
+
+    <div class="content">
+      <div class="empty-state" id="emptyState">Typ minimaal drie letters van een Tilburgse straatnaam.</div>
+      <div class="status" id="status"><span class="spinner"></span><span id="statusText">Zoeken…</span></div>
+      <div class="result" id="result"></div>
+    </div>
+  </section>
+</main>
+<div class="credit">Made by Martijn van der Put</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const PDOK = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1';
+  const LOCATION = 'https://api.pdok.nl/kadaster/location-api/v1/search';
+  const RD_CRS = 'http://www.opengis.net/def/crs/EPSG/0/28992';
+
+  // Kalibratie van de aangeleverde Tilburgse overzichtskaarten.
+  // Raster 331 is de noordwestelijke basiscel. De cellen zijn 1000 x 1000 m (RD).
+  // Westgrens = RD X 126500; noordgrens = RD Y 404500.
+  const GRID = { base:331, west:126500, north:404500, size:1000, cols:12, rows:14 };
+
+  const MAPS = {
+    NW: 'Tlb overzicht 331-486.pdf',
+    NE: 'Tlb overzicht 339-491.pdf',
+    SW: 'Tlb overzicht 506-660.pdf',
+    SE: 'Tlb overzicht 512-641.pdf'
+  };
+
+  const input = document.getElementById('streetInput');
+  const goBtn = document.getElementById('goBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const suggestionsEl = document.getElementById('suggestions');
+  const emptyState = document.getElementById('emptyState');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const resultEl = document.getElementById('result');
+
+  let suggestions = [];
+  let activeIndex = -1;
+  let selected = null;
+  let suggestTimer = 0;
+  let suggestController = null;
+  const cache = new Map();
+
+  const stripHtml = s => String(s ?? '').replace(/<[^>]*>/g,'');
+  const normalize = s => stripHtml(s).toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  const esc = s => String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const docsOf = j => j?.response?.docs || j?.docs || [];
+  const numFoundOf = j => Number(j?.response?.numFound ?? docsOf(j).length);
+  const sleep = ms => new Promise(r => setTimeout(r,ms));
+
+  function parseRD(value){
+    const m = String(value || '').match(/POINT\s*\(\s*([\d.+-]+)\s+([\d.+-]+)\s*\)/i);
+    return m ? {x:Number(m[1]), y:Number(m[2])} : null;
+  }
+
+  function gridForPoint(x,y){
+    const col = Math.floor((x - GRID.west) / GRID.size);
+    const row = Math.floor((GRID.north - y) / GRID.size);
+    const raster = GRID.base + col + 25 * row;
+    const inside = col >= 0 && col < GRID.cols && row >= 0 && row < GRID.rows;
+    return {col,row,raster,inside};
+  }
+
+  function mapPart(col,row){
+    if(col < 0 || col >= GRID.cols || row < 0 || row >= GRID.rows) return null;
+    if(row <= 6) return col <= 5 ? MAPS.NW : MAPS.NE;
+    return col <= 5 ? MAPS.SW : MAPS.SE;
+  }
+
+  function roadNameFromDoc(doc){
+    if(doc?.straatnaam) return stripHtml(doc.straatnaam).trim();
+    let w = stripHtml(doc?.weergavenaam || '').trim();
+    w = w.replace(/,\s*Tilburg(?:,.*)?$/i,'');
+    return w.trim();
+  }
+
+  function isTilburgDoc(doc){
+    const wp = stripHtml(doc?.woonplaatsnaam || '').toLowerCase();
+    const g = stripHtml(doc?.gemeentenaam || '').toLowerCase();
+    const w = stripHtml(doc?.weergavenaam || '').toLowerCase();
+    return wp === 'tilburg' || g === 'tilburg' || /,\s*tilburg(?:,|$)/i.test(w);
+  }
+
+  async function getJSON(url, signal){
+    const controller = signal ? null : new AbortController();
+    const usedSignal = signal || controller.signal;
+    const timer = controller ? setTimeout(()=>controller.abort(), 9000) : null;
+    try{
+      // Geen custom headers: dit houdt de aanvraag een eenvoudige CORS-GET en werkt
+      // betrouwbaarder vanuit mobiele browsers en lokale HTML-bestanden.
+      const r = await fetch(url, {signal:usedSignal, mode:'cors', cache:'no-store', credentials:'omit'});
+      if(!r.ok) throw new Error(`PDOK gaf status ${r.status}`);
+      return await r.json();
+    } finally {
+      if(timer) clearTimeout(timer);
+    }
+  }
+
+  function streetFromDisplayName(name){
+    let first = stripHtml(name || '').split(',')[0].trim();
+    // Location API geeft bij adressen meestal "Straatnaam 12" terug.
+    // Verwijder alleen een huisnummer aan het EINDE, zodat namen met cijfers vooraan blijven werken.
+    first = first.replace(/\s+\d+[A-Za-z]?(?:[-\s/]?[A-Za-z0-9]+)?\s*$/u,'').trim();
+    return first;
+  }
+
+  async function modernFeatures(term, limit=50, signal){
+    const u = new URL(LOCATION);
+    u.searchParams.set('q', `${term.trim()} Tilburg`);
+    u.searchParams.set('adres[version]', '1');
+    u.searchParams.set('limit', String(limit));
+    u.searchParams.set('f','json');
+    u.searchParams.set('crs', RD_CRS);
+    const data = await getJSON(u.toString(), signal);
+    return Array.isArray(data?.features) ? data.features : [];
+  }
+
+  async function fetchSuggestionsLegacy(term){
+    if(suggestController) suggestController.abort();
+    suggestController = new AbortController();
+    const q = encodeURIComponent(term.trim() + ' Tilburg');
+    const fl = encodeURIComponent('id,weergavenaam,type,straatnaam,woonplaatsnaam,gemeentenaam');
+    const url = `${PDOK}/suggest?q=${q}&fq=${encodeURIComponent('type:weg')}&rows=30&fl=${fl}`;
+    const data = await getJSON(url, suggestController.signal);
+    const needle = normalize(term);
+    return docsOf(data)
+      .filter(isTilburgDoc)
+      .map(d => ({...d, cleanName: roadNameFromDoc(d), source:'locatieserver'}))
+      .filter(d => d.cleanName)
+      .filter((d,i,a) => a.findIndex(x => normalize(x.cleanName) === normalize(d.cleanName)) === i)
+      .sort((a,b) => {
+        const A=normalize(a.cleanName), B=normalize(b.cleanName);
+        const sa = A.startsWith(needle) ? 0 : A.includes(needle) ? 1 : 2;
+        const sb = B.startsWith(needle) ? 0 : B.includes(needle) ? 1 : 2;
+        return sa-sb || a.cleanName.localeCompare(b.cleanName,'nl');
+      }).slice(0,12);
+  }
+
+  async function fetchSuggestionsModern(term){
+    const feats = await modernFeatures(term, 60);
+    const needle = normalize(term);
+    const out=[];
+    for(const f of feats){
+      const dn = String(f?.properties?.display_name || '');
+      if(!/tilburg/i.test(dn)) continue;
+      const name = streetFromDisplayName(dn);
+      if(!name) continue;
+      const nn=normalize(name);
+      if(!(nn.startsWith(needle) || nn.includes(needle))) continue;
+      if(out.some(x=>normalize(x.cleanName)===nn)) continue;
+      const c=f?.geometry?.coordinates;
+      out.push({cleanName:name, source:'location-api', modernFeature:f,
+        rd:Array.isArray(c)&&c.length>=2?{x:Number(c[0]),y:Number(c[1])}:null});
+    }
+    return out.sort((a,b)=>{
+      const A=normalize(a.cleanName), B=normalize(b.cleanName);
+      const sa=A.startsWith(needle)?0:1, sb=B.startsWith(needle)?0:1;
+      return sa-sb || a.cleanName.localeCompare(b.cleanName,'nl');
+    }).slice(0,12);
+  }
+
+  async function fetchSuggestions(term){
+    const key = normalize(term);
+    if(cache.has(key)) return cache.get(key);
+    let found=[];
+    try{
+      found = await fetchSuggestionsLegacy(term);
+    }catch(e){
+      if(e?.name==='AbortError') throw e;
+      console.warn('Locatieserver suggest mislukt, fallback naar Location API:', e);
+    }
+    if(!found.length){
+      try{
+        found = await fetchSuggestionsModern(term);
+      }catch(e){
+        console.warn('Location API fallback mislukt:',e);
+        throw new Error('De mobiele viewer blokkeert de online straatindex. Open dit HTML-bestand als normale webpagina in Safari/Chrome of plaats het op een HTTPS-webadres.');
+      }
+    }
+    cache.set(key,found);
+    return found;
+  }
+
+  function renderSuggestions(list){
+    suggestions = list;
+    activeIndex = -1;
+    if(!list.length){
+      suggestionsEl.innerHTML = '<div class="s-empty">Geen Tilburgse straat gevonden.</div>';
+      suggestionsEl.style.display='block';
+      return;
+    }
+    suggestionsEl.innerHTML = list.map((s,i) => `
+      <div class="suggestion" role="option" data-i="${i}">
+        <span class="s-name">${esc(s.cleanName)}</span>
+      </div>`).join('');
+    suggestionsEl.style.display='block';
+    suggestionsEl.querySelectorAll('.suggestion').forEach(el => {
+      const pick=e=>{e.preventDefault(); chooseSuggestion(Number(el.dataset.i), true);};
+      el.addEventListener('pointerdown', pick);
+      el.addEventListener('click', pick);
+    });
+  }
+
+  function setActive(i){
+    const items=[...suggestionsEl.querySelectorAll('.suggestion')];
+    if(!items.length) return;
+    activeIndex = Math.max(0,Math.min(i,items.length-1));
+    items.forEach((el,n)=>el.classList.toggle('active',n===activeIndex));
+    items[activeIndex]?.scrollIntoView({block:'nearest'});
+  }
+
+  function chooseSuggestion(i, run=false){
+    const s = suggestions[i]; if(!s) return;
+    selected = s;
+    input.value = s.cleanName;
+    clearBtn.style.display='block';
+    suggestionsEl.style.display='none';
+    if(run) analyzeSelected(s);
+  }
+
+  async function resolveInput(){
+    const term=input.value.trim();
+    if(term.length<3) throw new Error('Typ minimaal drie tekens van de straatnaam.');
+    if(selected && normalize(selected.cleanName)===normalize(term)) return selected;
+    const list=await fetchSuggestions(term);
+    if(!list.length) throw new Error('Geen huidige Tilburgse straat gevonden met deze naam.');
+    const n=normalize(term);
+    return list.find(s=>normalize(s.cleanName)===n) || list[0];
+  }
+
+  async function lookupRoad(id){
+    if(!id) return null;
+    // fl is bewust weggelaten: niet iedere mobiele/API-variant accepteert deze parameter op lookup.
+    const url=`${PDOK}/lookup?id=${encodeURIComponent(id)}&rows=1`;
+    const data=await getJSON(url);
+    return docsOf(data)[0] || null;
+  }
+
+  async function fetchAddressPointsLegacy(street){
+    const points=[];
+    const wanted=normalize(street);
+    const rows=100;
+    let start=0, total=Infinity, loops=0;
+    while(start<total && start<1600 && loops<16){
+      const q=encodeURIComponent(`"${street}" Tilburg`);
+      const fl=encodeURIComponent('weergavenaam,straatnaam,woonplaatsnaam,gemeentenaam,centroide_rd,type');
+      const url=`${PDOK}/free?q=${q}&fq=${encodeURIComponent('type:adres')}&rows=${rows}&start=${start}&fl=${fl}`;
+      const data=await getJSON(url);
+      const docs=docsOf(data);
+      total=numFoundOf(data);
+      for(const d of docs){
+        const sn=roadNameFromDoc(d);
+        if(!isTilburgDoc(d) || normalize(sn)!==wanted) continue;
+        const p=parseRD(d.centroide_rd);
+        if(p) points.push(p);
+      }
+      if(!docs.length) break;
+      start += docs.length; loops++;
+      if(total > rows) await sleep(25);
+    }
+    return points;
+  }
+
+  async function fetchAddressPointsModern(street){
+    // Maximaal 100 compacte BAG-adresresultaten; voldoende als mobiele fallback.
+    const feats=await modernFeatures(street,100);
+    const wanted=normalize(street);
+    const points=[];
+    for(const f of feats){
+      const dn=String(f?.properties?.display_name||'');
+      if(!/tilburg/i.test(dn)) continue;
+      if(normalize(streetFromDisplayName(dn))!==wanted) continue;
+      const c=f?.geometry?.coordinates;
+      if(Array.isArray(c)&&c.length>=2 && Number.isFinite(Number(c[0])) && Number.isFinite(Number(c[1])))
+        points.push({x:Number(c[0]),y:Number(c[1])});
+    }
+    return points;
+  }
+
+  async function fetchAddressPoints(street){
+    let points=[];
+    try{ points=await fetchAddressPointsLegacy(street); }
+    catch(e){ console.warn('Locatieserver adrespunten mislukt:',e); }
+    if(!points.length){
+      try{ points=await fetchAddressPointsModern(street); }
+      catch(e){ console.warn('Location API adrespunten mislukt:',e); }
+    }
+    const seen=new Set();
+    return points.filter(p=>{const k=`${Math.round(p.x)}:${Math.round(p.y)}`; if(seen.has(k)) return false; seen.add(k); return true;});
+  }
+
+  function summarize(points, fallbackPoint){
+    const counts=new Map();
+    let outside=0;
+    const addPoint=p=>{
+      const g=gridForPoint(p.x,p.y);
+      if(!g.inside){outside++; return;}
+      const k=String(g.raster);
+      if(!counts.has(k)) counts.set(k,{...g,count:0});
+      counts.get(k).count++;
+    };
+    points.forEach(addPoint);
+    if(!counts.size && fallbackPoint) addPoint(fallbackPoint);
+    const rasters=[...counts.values()].sort((a,b)=>b.count-a.count || a.raster-b.raster);
+    return {rasters,outside};
+  }
+
+  function rdBounds(g){
+    const x1=GRID.west + g.col*GRID.size, x2=x1+GRID.size;
+    const y2=GRID.north - g.row*GRID.size, y1=y2-GRID.size;
+    return {x1,x2,y1,y2};
+  }
+
+  function showLoading(text){
+    emptyState.style.display='none'; resultEl.style.display='none';
+    statusText.textContent=text; statusEl.style.display='flex'; goBtn.disabled=true;
+  }
+  function hideLoading(){ statusEl.style.display='none'; goBtn.disabled=false; }
+
+  function showError(message){
+    hideLoading(); emptyState.style.display='none'; resultEl.style.display='block';
+    resultEl.innerHTML=`<div class="notice error"><strong>Niet gelukt.</strong><br>${esc(message)}</div>`;
+  }
+
+  function formatList(values){
+    const a=[...values].sort((x,y)=>x-y).map(String);
+    if(a.length===1) return a[0];
+    if(a.length===2) return `${a[0]} en ${a[1]}`;
+    return `${a.slice(0,-1).join(', ')} en ${a[a.length-1]}`;
+  }
+
+  function renderResult(street, summary){
+    hideLoading();
+    const rasters=summary.rasters.map(r=>r.raster);
+    if(!rasters.length){
+      showError('Deze straat valt buiten de beschikbare bolletjestekening.');
+      return;
+    }
+    const label = rasters.length===1 ? 'Kaart' : 'Kaart';
+    resultEl.innerHTML=`
+      <h2 class="street">${esc(street)}</h2>
+      <div class="kaart-result">${label} ${esc(formatList(rasters))}</div>`;
+    resultEl.style.display='block';
+  }
+
+  async function analyzeSelected(suggestion){
+    try{
+      suggestionsEl.style.display='none';
+      const name=suggestion.cleanName || roadNameFromDoc(suggestion);
+      input.value=name; selected=suggestion; clearBtn.style.display='block';
+      showLoading('Zoeken…');
+      let road=null;
+      if(suggestion.id){
+        try{ road=await lookupRoad(suggestion.id); }catch(e){ console.warn('Lookup mislukt:',e); }
+      }
+      if(!road) road=suggestion;
+      const street=roadNameFromDoc(road) || suggestion.cleanName || name;
+      const centroid=parseRD(road.centroide_rd) || suggestion.rd || null;
+
+      showLoading('Zoeken…');
+      let points=[];
+      try{ points=await fetchAddressPoints(street); }catch(e){ console.warn('Adrespunten niet beschikbaar:',e); }
+      const usedFallback=points.length===0;
+      const summary=summarize(points,centroid);
+      renderResult(street,summary);
+    }catch(e){
+      if(e?.name==='AbortError') return;
+      showError(e?.message || 'Onbekende fout bij het opzoeken.');
+    }
+  }
+
+  async function runSearch(){
+    try{
+      suggestionsEl.style.display='none';
+      showLoading('Zoeken…');
+      const s=await resolveInput();
+      await analyzeSelected(s);
+    }catch(e){
+      if(e?.name==='AbortError') return;
+      showError(e?.message || 'Zoeken mislukt.');
+    }
+  }
+
+  input.addEventListener('input',()=>{
+    selected=null;
+    const term=input.value.trim();
+    clearBtn.style.display=term?'block':'none';
+    clearTimeout(suggestTimer);
+    if(term.length<3){suggestionsEl.style.display='none'; suggestions=[]; return;}
+    suggestTimer=setTimeout(async()=>{
+      try{ renderSuggestions(await fetchSuggestions(term)); }
+      catch(e){ if(e?.name!=='AbortError'){ suggestionsEl.innerHTML='<div class="s-empty">Straatvoorstellen konden niet worden geladen.</div>'; suggestionsEl.style.display='block'; } }
+    },240);
+  });
+
+  input.addEventListener('keydown',e=>{
+    if(suggestionsEl.style.display==='block' && suggestions.length){
+      if(e.key==='ArrowDown'){e.preventDefault();setActive(activeIndex+1);return;}
+      if(e.key==='ArrowUp'){e.preventDefault();setActive(activeIndex<=0?suggestions.length-1:activeIndex-1);return;}
+      if(e.key==='Enter' && activeIndex>=0){e.preventDefault();chooseSuggestion(activeIndex,true);return;}
+      if(e.key==='Escape'){suggestionsEl.style.display='none';return;}
+    }
+    if(e.key==='Enter'){e.preventDefault();runSearch();}
+  });
+
+  goBtn.addEventListener('click',runSearch);
+  clearBtn.addEventListener('click',()=>{
+    input.value=''; selected=null; suggestions=[]; suggestionsEl.style.display='none'; clearBtn.style.display='none';
+    resultEl.style.display='none'; statusEl.style.display='none'; emptyState.style.display='grid'; input.focus();
+  });
+  document.addEventListener('click',e=>{ if(!suggestionsEl.contains(e.target) && e.target!==input) suggestionsEl.style.display='none'; });
+
+  // Kleine ingebouwde kalibratiecheck voor de oude kaart.
+  const calibration=[
+    {name:'Kasterenlaan',x:128318,y:398681,want:457},
+    {name:'Huibevendreef',x:128913,y:398701,want:458},
+    {name:'Heuvelstraat',x:134321,y:396495,want:538},
+    {name:'Spoorlaan',x:134674,y:396783,want:514}
+  ];
+  for(const c of calibration){
+    const got=gridForPoint(c.x,c.y).raster;
+    if(got!==c.want) console.warn(`Rasterkalibratie ${c.name}: ${got} i.p.v. ${c.want}`);
+  }
+
+})();
+</script>
+</body>
+</html>
